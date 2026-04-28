@@ -72,6 +72,11 @@ class ReportAnalyzerAgent:
             
             insight_text = response.choices[0].message.content.strip()
             
+            # 去掉思考模型的思考过程标签
+            import re
+            insight_text = re.sub(r'<think>[\s\S]*?</think>', '', insight_text, flags=re.IGNORECASE)
+            insight_text = re.sub(r'<think>[\s\S]*?', '', insight_text, flags=re.IGNORECASE)
+            
             # 拦截 3：模型返回了空数据
             if not insight_text:
                 return "<div style='color:#d97706; font-weight:bold;'>⚠️ 大模型调用成功，但返回了空内容，请检查 Prompt 是否合理。</div>"

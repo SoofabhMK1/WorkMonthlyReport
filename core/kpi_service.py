@@ -152,9 +152,11 @@ class MonthlyKPIService:
 
             yoy_rev = yoy_dept_df[yoy_dept_df['大类'] == '收入']['值'].sum()
             yoy_cost = yoy_dept_df[yoy_dept_df['大类'] == '成本']['值'].sum()
+            yoy_visits = yoy_dept_df[(yoy_dept_df['大类'] == '人次') & (yoy_dept_df['项目'] == '挂号人次')]['值'].sum()
             
             mom_rev = mom_dept_df[mom_dept_df['大类'] == '收入']['值'].sum()
             mom_cost = mom_dept_df[mom_dept_df['大类'] == '成本']['值'].sum()
+            mom_visits = mom_dept_df[(mom_dept_df['大类'] == '人次') & (mom_dept_df['项目'] == '挂号人次')]['值'].sum()
 
             # --- 新增维度 1：计算客单价 ---
             avg_revenue = round(cur_rev / cur_visits, 0) if cur_visits > 0 else 0
@@ -183,6 +185,9 @@ class MonthlyKPIService:
                 "revenue": round(cur_rev / 10000, 1),
                 "rev_yoy": self._calc_growth(cur_rev, yoy_rev),
                 "rev_mom": self._calc_growth(cur_rev, mom_rev),
+                "visits": int(cur_visits),
+                "visits_yoy": self._calc_growth(cur_visits, yoy_visits),
+                "visits_mom": self._calc_growth(cur_visits, mom_visits),
                 "avg_revenue": avg_revenue,  # 注入客单价
                 "cost": round(cur_cost / 10000, 1),
                 "cost_yoy": self._calc_growth(cur_cost, yoy_cost),
