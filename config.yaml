@@ -1,0 +1,34 @@
+# ==========================================
+# 医院运营报表系统 - 核心业务配置
+# ==========================================
+
+# 1. 系统路径配置
+system:
+  data_dir: "data"                  # 原始数据存放目录
+  output_dir: "output"              # 生成的长图/PDF存放目录
+  template_dir: "templates"         # Jinja2 模板目录
+
+# 2. 大模型 (LLM) 全局设置
+llm:
+  # 当前激活的模型供应商
+  active_provider: "openai"
+  
+  # 提示词模板路径
+  prompt_template_path: "core/prompt_template.md"
+  
+  # 具体供应商配置详情
+  providers:
+    # OpenAI 设置
+    openai:
+      model: "minimax/minimax-m2.7"
+      temperature: 0.2
+      max_tokens: 8000
+      timeout: 45
+
+# 3. 报表生成设置
+report:
+  # 截图视口设置 (控制生成的图片宽度和精细度)
+  render:
+    viewport_width: 800
+    viewport_height: 1200
+    device_scale_factor: 2      # 设为 2 即开启 Retina 高清渲染

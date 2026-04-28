@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <style>
+        body { background-color: #e2e8f0; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+        .report-wrapper { width: 800px; margin: 0 auto; padding: 40px 25px; }
+        .grid-3-2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+        .rounded-2xl { border-radius: 1rem !important; }
+    </style>
+</head>
+<body>
+    <div class="report-wrapper">
+        
+        <div class="bg-cyan-800 text-white p-8 rounded-2xl shadow-lg mb-6">
+            <h1 class="text-3xl font-bold tracking-tight">上海上实健康医疗有限公司</h1>
+            <p class="text-cyan-200 text-lg mt-2 font-medium">运营月度分析报告 · {{ data.report_month }}</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-xl space-y-6 mb-6">
+            <div class="grid-3-2">
+                {% macro kpi_box(title, key, color='blue') %}
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-{{ color }}-500 flex flex-col justify-between h-28">
+                    <p class="text-xs text-gray-500 font-medium">{{ title }}</p>
+                    <p class="text-2xl font-bold text-gray-800">
+                        {{ "{:,.0f}".format(data.kpis[key].value) if data.kpis[key].value > 10000 else data.kpis[key].value }}
+                    </p>
+                    <div class="flex gap-2 text-[10px]">
+                        <span class="{{ 'text-red-500' if data.kpis[key].yoy > 0 else 'text-green-600' if 'cost' in key else 'text-green-600' }} font-bold">
+                            同 {{ '↑' if data.kpis[key].yoy > 0 else '↓' }} {{ data.kpis[key].yoy | abs }}%
+                        </span>
+                        <span class="text-gray-400">环 {{ '↑' if data.kpis[key].mom > 0 else '↓' }} {{ data.kpis[key].mom | abs }}%</span>
+                    </div>
+                </div>
+                {% endmacro %}
+
+                {{ kpi_box('总收入', 'total_revenue', 'blue') }}
+                {{ kpi_box('毛利润', 'gross_profit', 'emerald') }}
+                {{ kpi_box('净利润', 'net_profit', 'teal') }}
+                {{ kpi_box('总成本', 'total_cost', 'red') }}
+                {{ kpi_box('总挂号人次', 'total_visits', 'indigo') }}
+                {{ kpi_box('手术台次', 'surgeries', 'cyan') }}
+            </div>
+
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="text-xl">🤖</span>
+                    <h3 class="font-bold text-slate-800 text-lg">核心运营洞察与归因分析</h3>
+                </div>
+                <div class="prose prose-sm prose-slate max-w-none">
+                    {% if data.llm_analysis %}
+                        {{ data.llm_analysis | safe }}
+                    {% else %}
+                        <p class="text-gray-400 italic">正在等待 AI 生成深度分析...</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <div class="flex items-center gap-2 mb-4 border-b pb-3 border-gray-300">
+                <span class="text-xl">🏢</span>
+                <h3 class="font-bold text-slate-800 text-xl">核心科室精细化绩效分解</h3>
+            </div>
+
+            <div class="space-y-6">
+                {% for dept in data.department_scorecards %}
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                    
+                    <div class="flex justify-between items-center mb-5">
+                        <h4 class="text-xl font-bold text-gray-800">{{ dept.name }}</h4>
+                        <span class="px-3 py-1 rounded-full text-sm font-bold shadow-sm {{ 'bg-emerald-100 text-emerald-700 border border-emerald-200' if dept.margin >= 30 else 'bg-amber-100 text-amber-700 border border-amber-200' }}">
+                            利润率 {{ dept.margin }}%
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-5">
+                        
+                        <div class="bg-blue-50/40 p-4 rounded-xl border border-blue-100/60 flex justify-between items-stretch">
+                            <div class="flex-1">
+                                <p class="text-[10px] text-gray-500 mb-1 font-medium">本月收入 (万元)</p>
+                                <p class="text-2xl font-bold text-blue-700 leading-tight">{{ dept.revenue }}</p>
+                                <div class="flex flex-col gap-0.5 text-[10px] mt-2">
+                                    <span class="{{ 'text-red-500 font-bold' if dept.rev_yoy > 0 else 'text-green-600 font-bold' }}">同 {{ '↑' if dept.rev_yoy > 0 else '↓' }} {{ dept.rev_yoy | abs }}%</span>
+                                    <span class="text-gray-400">环 {{ '↑' if dept.rev_mom > 0 else '↓' }} {{ dept.rev_mom | abs }}%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="w-1/3 border-l border-blue-200/60 pl-3 flex flex-col justify-center text-right">
+                                <p class="text-[9px] text-gray-400 font-bold mb-1 tracking-wider uppercase">客单价</p>
+                                <p class="text-sm font-bold text-gray-700">¥{{ "{:,.0f}".format(dept.avg_revenue) }}</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-red-50/40 p-4 rounded-xl border border-red-100/60 flex justify-between items-stretch">
+                            <div class="flex-1">
+                                <p class="text-[10px] text-gray-500 mb-1 font-medium">本月成本 (万元)</p>
+                                <p class="text-2xl font-bold text-red-700 leading-tight">{{ dept.cost }}</p>
+                                <div class="flex flex-col gap-0.5 text-[10px] mt-2">
+                                    <span class="{{ 'text-red-500 font-bold' if dept.cost_yoy > 0 else 'text-green-600 font-bold' }}">同 {{ '↑' if dept.cost_yoy > 0 else '↓' }} {{ dept.cost_yoy | abs }}%</span>
+                                    <span class="text-gray-400">环 {{ '↑' if dept.cost_mom > 0 else '↓' }} {{ dept.cost_mom | abs }}%</span>
+                                </div>
+                            </div>
+
+                            <div class="w-[45%] border-l border-red-200/60 pl-3 flex flex-col justify-center space-y-2">
+                                <p class="text-[9px] text-gray-400 font-bold tracking-wider leading-none uppercase">成本结构</p>
+                                <div class="space-y-1.5 w-full">
+                                    {% for item in dept.cost_structure %}
+                                    <div>
+                                        <div class="flex justify-between items-center text-[9px] mb-0.5">
+                                            <span class="text-gray-600 truncate mr-1">{{ item.name }}</span>
+                                            <span class="font-bold text-gray-800">{{ item.ratio }}%</span>
+                                        </div>
+                                        <div class="w-full bg-red-100 h-[2px] rounded-full overflow-hidden">
+                                            <div class="bg-red-400 h-full rounded-full" style="width: {{ item.ratio }}%"></div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-full bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <div class="flex justify-between text-[11px] text-gray-500 mb-1.5 font-medium">
+                            <span>整体成本占收入比例 (吃水线)</span>
+                            <span class="{{ 'text-red-600 font-bold' if dept.cost_ratio > 80 else 'text-gray-700' }}">{{ dept.cost_ratio }}%</span>
+                        </div>
+                        <div class="w-full bg-blue-100 h-2 rounded-full overflow-hidden flex">
+                            <div class="bg-red-400 h-full rounded-full transition-all" style="width: {{ dept.cost_ratio }}%"></div>
+                        </div>
+                    </div>
+
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
