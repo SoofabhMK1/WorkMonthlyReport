@@ -7,9 +7,9 @@
 系统遵循严格的“单一职责原则 (SRP)”，模块间通过纯 JSON 字典（数据契约）进行通信。
 
 1. **数据接入层 (`core/data_loader.py`)**：负责读取 `data/数据.xlsx`，完成基础格式清洗。
-2. **业务逻辑层 (`core/kpi_service.py`)**：核心算账引擎。负责计算同环比、各科室客单价 (ARPU)、成本结构 (TOP3吃水线) 等。
+2. **业务逻辑层 (`core/kpi_service.py`)**：核心算账引擎。负责计算同环比、各科室客单价 (ARPU)、成本结构 (TOP3吃水线)、12个月收入成本趋势等。
 3. **AI 分析层 (`core/llm_agent.py`)**：调用大模型 API（基于 `config.yaml` 切换提供商），根据清洗后的数据契约进行异常洞察，并将结果由 Markdown 解析为 HTML。
-4. **表现渲染层 (`templates/report.html` & `core/renderer.py`)**：使用 Jinja2 填词，Tailwind CSS 排版，最后由 Playwright 启动无头 Chromium（开启 Retina 2倍缩放）渲染高清长图。
+4. **表现渲染层 (`templates/report.html` & `core/renderer.py`)**：使用 Jinja2 填词，Tailwind CSS 排版，ECharts 绑订数据图表，最后由 Playwright 启动无头 Chromium（开启 Retina 2倍缩放）渲染高清长图。
 
 ## 📂 Directory Structure (目录结构)
 ```text
@@ -49,12 +49,20 @@ siic-report-agent/
     "surgeries": {"value": ...}
   },
   "llm_analysis": "<p>解析好的 HTML 字符串...</p>",
+  "revenue_cost_trend": {
+    "months": ["2025-04", "2025-05", ...],
+    "revenue": [1487.8, 548.1, ...],
+    "cost": [1372.3, 801.1, ...]
+  },
   "department_scorecards": [
     {
       "name": "整形外科",
       "revenue": 650.0,
       "rev_yoy": 5.2,
       "rev_mom": -1.2,
+      "visits": 1200,
+      "visits_yoy": 3.5,
+      "visits_mom": -2.1,
       "avg_revenue": 5400,
       "cost": 480.0,
       "cost_yoy": 8.1,
@@ -73,7 +81,8 @@ siic-report-agent/
 ## ⚠️ Development Rules & Known Pitfalls (开发规约与避坑指南)
 
 ### 1. 表现层 (UI/HTML) 规约
-* **禁止重度依赖 CDN 稳定性**：在 HTML 的 `<style>` 中必须保留核心类的兜底样式（如 `grid-3-2`），防止 Tailwind 插件因网络原因未加载导致排版全毁。
+* **禁止重度依赖 CDN 稳定性**：在 HTML 的 `<style>` 中必须保留核心类的兜底样式（如 `grid-3-2`），防止 Tailwind 插件因网络原因未加载导致排版全毁。同时 ECharts CDN 也需要确保网络可用，或考虑内联。
+* **ECharts 渲染时机**：图表脚本需包裹在 `DOMContentLoaded` 事件中，确保 DOM 就绪后再初始化 `echarts.init()`。
 * **移动端排版约束**：外层包装器固定宽度 `800px`。对于并排区块（如科室卡片内的收入与成本），优先使用 `grid grid-cols-2` 而非 `flex`，以防止数据过长撑破布局导致换行失控。
 * **Markdown 渲染要求**：`llm_analysis` 必须经过 Python 的 `markdown` 库解析（启用 `extra` 和 `nl2br` 扩展），并在 HTML 中使用 Tailwind Typography 插件的 `prose` 类族（如 `prose prose-sm prose-slate`）进行美化，否则列表和加粗将无法正确显示。
 
@@ -84,8 +93,5 @@ siic-report-agent/
 ### 3. AI 分析引擎规约
 * **显式错误拦截**：LLM 调度如果遇到超时、断网或返回为空，必须捕获异常并返回包含错误原因的 HTML 字符串（红色预警），以确保报错信息能直接印在最终长图上，实现“所见即所得”的 Debug。
 * **归因数据供给**：不要只喂给 LLM 顶层大盘数据。必须将科室的“量本利”拆解、变动成本的异常增长提供给大模型，促使其进行交叉验证和深度归因。
+* **思考模型处理**：如果使用带思考过程的模型（如 MiniMax），需要在解析前过滤掉 <think> 和 </think> 标签内容，防止思考过程出现在最终报告中。
 ```
-
-***
-
-这份文件结构严谨，下次当您启动 Hermes Agent 或任何支持读取工程上下文的 LLM 时，它会自动读取这个文件，瞬间继承我们刚刚推演出的所有架构设计、数据字典和踩过的坑，从而确保后续生成的代码完全符合当前的系统规范。
