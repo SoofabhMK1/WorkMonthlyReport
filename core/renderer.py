@@ -18,10 +18,24 @@ class ReportRenderer:
             page = context.new_page()
             page.set_content(html_content)
             
-            # 【重要】等待网络空闲，确保 Tailwind 和 字体加载完成
+            # 【重要】等待网络空闲，确保 Tailwind 和 ECharts CDN 加载完成
             page.wait_for_load_state("networkidle")
-            # 【可选】针对复杂的图表，再强行等 500 毫秒
-            page.wait_for_timeout(500)
+            page.wait_for_timeout(2000)
+            
+            # 捕获控制台消息
+            def handle_console(msg):
+                if msg.type == "error":
+                    print(f"⚠️ 控制台错误: {msg.text}")
+            page.on("console", handle_console)
+            
+            # 确保 ECharts canvas 存在
+            try:
+                page.wait_for_selector('#trend-chart canvas', timeout=5000)
+                print("✅ ECharts canvas 已渲染")
+            except:
+                print("❌ ECharts canvas 未找到")
+            
+            page.wait_for_timeout(1000)
             
             page.screenshot(path=f"output/{filename}", full_page=True)
             browser.close()

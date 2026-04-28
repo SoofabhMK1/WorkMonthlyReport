@@ -126,6 +126,26 @@ class MonthlyKPIService:
             chart_data["margin"].append(margin)
             
         return chart_data
+
+    def _calc_revenue_cost_trend(self, target_date):
+        """计算近12个月收入与成本趋势，用于双轴折线图"""
+        trend_data = {"months": [], "revenue": [], "cost": []}
+        
+        for i in range(11, -1, -1):
+            month_date = target_date - relativedelta(months=i)
+            month_df = self.df[
+                (self.df['日期'].dt.year == month_date.year) & 
+                (self.df['日期'].dt.month == month_date.month)
+            ]
+            
+            rev = month_df[month_df['大类'] == '收入']['值'].sum()
+            cost = month_df[month_df['大类'] == '成本']['值'].sum()
+            
+            trend_data["months"].append(month_date.strftime("%Y-%m"))
+            trend_data["revenue"].append(round(rev / 10000, 1))
+            trend_data["cost"].append(round(cost / 10000, 1))
+        
+        return trend_data
     
     def _calc_department_scorecards(self, target_date):
         """生成科室专属绩效卡片数据列表 (包含客单价与成本结构)"""
@@ -209,6 +229,7 @@ class MonthlyKPIService:
         department_details = self._calc_department_details(times['current'], times['mom'])
         department_chart_data = self._calc_department_chart_data(times['current'])
         department_scorecards = self._calc_department_scorecards(times['current'])
+        revenue_cost_trend = self._calc_revenue_cost_trend(times['current'])
 
         return {
             "report_month": target_month,
@@ -224,5 +245,6 @@ class MonthlyKPIService:
             },
             "department_details": department_details,
             "department_chart_data": department_chart_data,
-            "department_scorecards": department_scorecards
+            "department_scorecards": department_scorecards,
+            "revenue_cost_trend": revenue_cost_trend
         }

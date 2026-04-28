@@ -32,6 +32,9 @@ siic-report-agent/
 └── output/                 # 生成的最终长图目录
 ```
 
+### 运行命令
+始终使用 `uv run python main.py` 来运行项目（需要虚拟环境）
+
 ## 📜 Data Contracts (核心数据契约)
 在编写或修改 HTML 模板时，必须遵循由 `kpi_service.py` 产出的 `report_data` 结构：
 ```json
