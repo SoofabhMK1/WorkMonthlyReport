@@ -32,3 +32,29 @@ report:
     viewport_width: 800
     viewport_height: 1200
     device_scale_factor: 2      # 设为 2 即开启 Retina 高清渲染
+
+# 4. 数据源配置
+data_schema:
+  date_column: "日期"
+  category_column: "大类"
+  sub_category_column: "二级分类"
+  item_column: "项目"
+  department_column: "科室"
+  value_column: "值"
+
+category_mapping:
+  收入: "revenue"
+  成本: "cost"
+  人次: "visits"
+
+item_mapping:
+  挂号人次: "outpatient_visits"
+  手术台数: "surgeries"
+  新客人数: "new_patients"
+  老客人数: "old_patients"
+
+target_departments:
+  - "整形外科"
+  - "美容皮肤科"
+  - "美容中医科"
+  - "口腔科"

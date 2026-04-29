@@ -27,6 +27,26 @@ class AppConfig:
         """获取提示词路径"""
         return self._config['llm']['prompt_template_path']
 
+    @property
+    def data_schema(self):
+        """获取数据源列名映射配置"""
+        return self._config.get('data_schema', {})
+
+    @property
+    def category_mapping(self):
+        """获取大类映射配置"""
+        return self._config.get('category_mapping', {})
+
+    @property
+    def item_mapping(self):
+        """获取项目映射配置"""
+        return self._config.get('item_mapping', {})
+
+    @property
+    def target_departments(self):
+        """获取目标科室列表"""
+        return self._config.get('target_departments', [])
+
     def get_api_key(self):
         """根据当前激活的供应商，自动去环境变量里拿对应的 API KEY"""
         provider = self.llm_provider.upper() # 例如把 'deepseek' 变成 'DEEPSEEK'

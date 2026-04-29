@@ -4,26 +4,38 @@
 本项目是一个高度解耦的自动化数据报告系统。系统通过读取底层 Excel/CSV 业财数据，经由 Pandas 进行多维聚合计算，调用 LLM (大语言模型) 提取业务异常与归因，最终通过 Jinja2 + Tailwind CSS 组装为 HTML，并利用 Playwright 截取为适合移动端（如钉钉、微信）阅读的高清长图。
 
 ## 🏗️ Architecture & Modules (架构与模块解耦)
-系统遵循严格的“单一职责原则 (SRP)”，模块间通过纯 JSON 字典（数据契约）进行通信。
+系统遵循严格的"单一职责原则 (SRP)"，模块间通过纯 JSON 字典（数据契约）进行通信。
 
-1. **数据接入层 (`core/data_loader.py`)**：负责读取 `data/数据.xlsx`，完成基础格式清洗。
-2. **业务逻辑层 (`core/kpi_service.py`)**：核心算账引擎。负责计算同环比、各科室客单价 (ARPU)、成本结构 (TOP3吃水线)、12个月收入成本趋势等。
-3. **AI 分析层 (`core/llm_agent.py`)**：调用大模型 API（基于 `config.yaml` 切换提供商），根据清洗后的数据契约进行异常洞察，并将结果由 Markdown 解析为 HTML。
-4. **表现渲染层 (`templates/report.html` & `core/renderer.py`)**：使用 Jinja2 填词，Tailwind CSS 排版，ECharts 绑订数据图表，最后由 Playwright 启动无头 Chromium（开启 Retina 2倍缩放）渲染高清长图。
+1. **数据接入层 (`core/data_loader.py`)**：负责读取 `data/数据.xlsx`，基于 `config.yaml` 中的数据源映射配置完成格式清洗和校验。
+2. **业务逻辑层（KPI 服务模块化拆分）**：
+   - `core/kpi_base.py`：基础工具，时间窗口、安全计算、过滤函数
+   - `core/kpi_summary.py`：大盘 KPI，总收入/成本/利润/人次等
+   - `core/kpi_trend.py`：趋势 KPI，12个月收入成本趋势
+   - `core/kpi_department.py`：科室 KPI，明细/图表/绩效卡片
+   - `core/kpi_service.py`：委托调用层，组装各模块输出为统一契约
+3. **数据校验层 (`core/validators.py`)**：Schema 校验、KPI 结果合理性校验
+4. **AI 分析层 (`core/llm_agent.py`)**：调用大模型 API（基于 `config.yaml` 切换提供商），根据清洗后的数据契约进行异常洞察，并将结果由 Markdown 解析为 HTML。
+5. **表现渲染层 (`templates/report.html` & `core/renderer.py`)**：使用 Jinja2 填词，Tailwind CSS 排版，ECharts 绑订数据图表，最后由 Playwright 启动无头 Chromium（开启 Retina 2倍缩放）渲染高清长图。
 
 ## 📂 Directory Structure (目录结构)
 ```text
 siic-report-agent/
 ├── .env                    # 机密配置 (API Keys, 严禁提交)
-├── config.yaml             # 业务与模型配置 (模型切换、温度、超时)
+├── config.yaml             # 业务与模型配置 (模型切换、温度、超时、数据源映射)
 ├── AGENTS.md               # 本文件，AI 上下文与项目规约
 ├── main.py                 # 主调度管道
 ├── data/
 │   └── 数据.xlsx           # 原始数据源 (含：大类、二级分类、项目、科室、值)
 ├── core/
 │   ├── config.py           # 统一配置加载器
-│   ├── data_loader.py      # 数据读取
-│   ├── kpi_service.py      # 指标计算服务
+│   ├── schema.py           # 数据源映射配置（列名映射、科室列表）
+│   ├── data_loader.py      # 数据读取与校验
+│   ├── validators.py       # 数据校验层
+│   ├── kpi_base.py         # KPI 基础工具
+│   ├── kpi_summary.py      # 大盘 KPI
+│   ├── kpi_trend.py        # 趋势 KPI
+│   ├── kpi_department.py   # 科室 KPI
+│   ├── kpi_service.py      # KPI 服务主入口（委托调用层）
 │   ├── llm_agent.py        # LLM 调度与 Markdown 解析
 │   ├── prompt_template.md  # 独立的 AI 提示词库
 │   └── renderer.py         # Playwright 截图服务
@@ -82,7 +94,7 @@ siic-report-agent/
 
 ### 1. 表现层 (UI/HTML) 规约
 * **禁止重度依赖 CDN 稳定性**：在 HTML 的 `<style>` 中必须保留核心类的兜底样式（如 `grid-3-2`），防止 Tailwind 插件因网络原因未加载导致排版全毁。同时 ECharts CDN 也需要确保网络可用，或考虑内联。
-* **ECharts 渲染时机**：图表脚本需包裹在 `DOMContentLoaded` 事件中，确保 DOM 就绪后再初始化 `echarts.init()`。
+* **ECharts 渲染时机**：图表脚本放在 `<body>` 末尾，在 `</body>` 之前直接执行初始化，无需 `DOMContentLoaded` 包裹。
 * **移动端排版约束**：外层包装器固定宽度 `800px`。对于并排区块（如科室卡片内的收入与成本），优先使用 `grid grid-cols-2` 而非 `flex`，以防止数据过长撑破布局导致换行失控。
 * **Markdown 渲染要求**：`llm_analysis` 必须经过 Python 的 `markdown` 库解析（启用 `extra` 和 `nl2br` 扩展），并在 HTML 中使用 Tailwind Typography 插件的 `prose` 类族（如 `prose prose-sm prose-slate`）进行美化，否则列表和加粗将无法正确显示。
 
