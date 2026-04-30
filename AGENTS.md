@@ -93,13 +93,13 @@ siic-report-agent/
 ## ⚠️ Development Rules & Known Pitfalls (开发规约与避坑指南)
 
 ### 1. 表现层 (UI/HTML) 规约
-* **禁止重度依赖 CDN 稳定性**：在 HTML 的 `<style>` 中必须保留核心类的兜底样式（如 `grid-3-2`），防止 Tailwind 插件因网络原因未加载导致排版全毁。同时 ECharts CDN 也需要确保网络可用，或考虑内联。
-* **ECharts 渲染时机**：图表脚本放在 `<body>` 末尾，在 `</body>` 之前直接执行初始化，无需 `DOMContentLoaded` 包裹。
+* **禁止重度依赖 CDN 稳定性**：在 HTML 的 `<style>` 中必须保留核心类的兜底样式（如 `grid-3-2`），防止 Tailwind 插件因网络原因未加载导致排版全毁。ECharts 已本地内联（`templates/echarts.min.js`），渲染时自动注入到 HTML 中，无需外部依赖。
+* **ECharts 渲染**：ECharts 代码在 `render_to_image()` 时动态内联到 HTML 中，脚本放在 `<body>` 末尾直接执行，无需 `DOMContentLoaded` 包裹。
 * **移动端排版约束**：外层包装器固定宽度 `800px`。对于并排区块（如科室卡片内的收入与成本），优先使用 `grid grid-cols-2` 而非 `flex`，以防止数据过长撑破布局导致换行失控。
 * **Markdown 渲染要求**：`llm_analysis` 必须经过 Python 的 `markdown` 库解析（启用 `extra` 和 `nl2br` 扩展），并在 HTML 中使用 Tailwind Typography 插件的 `prose` 类族（如 `prose prose-sm prose-slate`）进行美化，否则列表和加粗将无法正确显示。
 
 ### 2. 逻辑层 (Python) 规约
-* **量级碾压防范**：绝不要将千万级数据（如整形外科收入）与百元级数据（如美容中医科成本）放入同一个线性图表中（如 ECharts）。必须采用“卡片化 (Scorecard)”独立展示，利用同环比和进度条体现价值。
+* **量级碾压防范**：绝不要将千万级数据（如整形外科收入）与百元级数据（如美容中医科成本）放入同一个线性图表中（如 ECharts）。
 * **安全性除法**：所有的同环比计算、利润率计算、ARPU 计算必须做分母为 0 的防御性判断，防止遇到新科室或新项目时触发 `ZeroDivisionError`。
 
 ### 3. AI 分析引擎规约
